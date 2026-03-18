@@ -91,6 +91,7 @@ class BusControlApp:
         self.root.configure(bg="#0a0c10")
         self.root.geometry("800x480")
         self.root.resizable(False, False)
+        self.root.overrideredirect(True)  # quita la barra de titulo del sistema
 
         self.fn_title = tk.font.Font(family="Courier", size=10, weight="bold")
         self.fn_btn   = tk.font.Font(family="Courier", size=9,  weight="bold")
@@ -136,7 +137,7 @@ class BusControlApp:
             left.rowconfigure(row, weight=1)
 
         # ── Derecha: Bus writer ──
-        right = tk.Frame(body, bg="#0a0c10", width=200)
+        right = tk.Frame(body, bg="#0a0c10", width=215)
         right.pack(side="right", fill="y", padx=(6,2))
         right.pack_propagate(False)
         self._build_bus_panel(right)
