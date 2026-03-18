@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Bus Digital Controller</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c10;
+    --surface: #0f1218;
+    --border: #1e2530;
+    --accent: #00e5ff;
+    --accent2: #ff3d71;
+    --text: #c8d6e5;
+    --dim: #4a5568;
+    --glow: 0 0 12px rgba(0,229,255,0.4);
+    --glow2: 0 0 12px rgba(255,61,113,0.4);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.02) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(10,12,16,0.95);
+    backdrop-filter: blur(10px);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 900;
+    font-size: 1.1rem;
+    color: var(--accent);
+    text-shadow: var(--glow);
+    letter-spacing: 2px;
+  }
+  .logo span { color: var(--accent2); }
+  .status-badge {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 0.7rem; color: var(--dim);
+  }
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #555;
+    transition: all 0.3s;
+  }
+  .status-dot.connected { background: #00ff88; box-shadow: 0 0 8px #00ff88; }
+  .status-dot.sim { background: #ffaa00; box-shadow: 0 0 8px #ffaa00; }
+
+  /* ── Main layout ── */
+  main { padding: 16px; max-width: 900px; margin: 0 auto; }
+
+  /* ── Section title ── */
+  .section-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.65rem;
+    letter-spacing: 3px;
+    color: var(--dim);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    padding-left: 4px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1; height: 1px;
+    background: linear-gradient(90deg, var(--border), transparent);
+  }
+
+  /* ── Bus visualizer ── */
+  .bus-display {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+  .bus-bits {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .bit-cell {
+    width: 48px; height: 48px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: #080a0e;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .bit-cell.active {
+    border-color: var(--accent);
+    box-shadow: inset 0 0 12px rgba(0,229,255,0.15), var(--glow);
+  }
+  .bit-label {
+    font-size: 0.55rem;
+    color: var(--dim);
+    position: absolute;
+    top: 4px;
+  }
+  .bit-value {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--dim);
+    transition: all 0.2s;
+  }
+  .bit-cell.active .bit-value { color: var(--accent); text-shadow: var(--glow); }
+
+  .bus-info {
+    display: flex;
+    justify-content: space-around;
+    font-size: 0.75rem;
+    color: var(--dim);
+    border-top: 1px solid var(--border);
+    padding-top: 10px;
+    flex-wrap: wrap; gap: 8px;
+  }
+  .bus-info-item { text-align: center; }
+  .bus-info-value {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1rem;
+    color: var(--accent);
+    text-shadow: var(--glow);
+    display: block;
+  }
+
+  /* ── Bus writer ── */
+  .bus-writer {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+  .hex-input-row {
+    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  }
+  .hex-input {
+    flex: 1; min-width: 120px;
+    background: #080a0e;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--accent);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.4rem;
+    text-align: center;
+    padding: 10px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .hex-input:focus { border-color: var(--accent); box-shadow: var(--glow); }
+  .hex-input::placeholder { color: var(--dim); font-size: 0.9rem; }
+
+  .preset-row {
+    display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px;
+  }
+  .preset-btn {
+    padding: 6px 12px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--dim);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    touch-action: manipulation;
+  }
+  .preset-btn:active, .preset-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(0,229,255,0.05);
+  }
+
+  /* ── LED Grid ── */
+  .led-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .led-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .led-card.on {
+    border-color: var(--card-color, var(--accent));
+    box-shadow: 0 0 20px rgba(var(--card-rgb, '0,229,255'), 0.15);
+  }
+  .led-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--card-color, var(--border));
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .led-card.on::before { opacity: 1; }
+
+  .led-card-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .led-indicator {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: #1a1e26;
+    border: 2px solid var(--border);
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  .led-card.on .led-indicator {
+    background: var(--card-color, var(--accent));
+    border-color: var(--card-color, var(--accent));
+    box-shadow: 0 0 12px var(--card-color, var(--accent));
+  }
+  .led-card.blink .led-indicator { animation: blink-anim 0.5s ease-in-out infinite alternate; }
+
+  @keyframes blink-anim {
+    from { opacity: 0.1; box-shadow: none; }
+    to { opacity: 1; box-shadow: 0 0 16px var(--card-color, var(--accent)); }
+  }
+
+  .led-name {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: var(--text);
+    flex: 1; padding: 0 8px;
+  }
+  .led-pin {
+    font-size: 0.6rem;
+    color: var(--dim);
+  }
+
+  /* Toggle switch */
+  .toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .toggle-label { font-size: 0.7rem; color: var(--dim); }
+  .toggle {
+    position: relative; width: 44px; height: 24px; cursor: pointer;
+    touch-action: manipulation;
+  }
+  .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+  .toggle-track {
+    position: absolute; inset: 0;
+    background: #1a1e26;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    transition: all 0.2s;
+  }
+  .toggle input:checked ~ .toggle-track {
+    background: rgba(var(--card-rgb2, '0,229,255'), 0.2);
+    border-color: var(--card-color, var(--accent));
+  }
+  .toggle-thumb {
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--dim);
+    transition: all 0.2s;
+  }
+  .toggle input:checked ~ .toggle-track .toggle-thumb {
+    transform: translateX(20px);
+    background: var(--card-color, var(--accent));
+    box-shadow: 0 0 8px var(--card-color, var(--accent));
+  }
+
+  /* Brightness slider */
+  .slider-row { margin-bottom: 8px; }
+  .slider-label {
+    display: flex; justify-content: space-between;
+    font-size: 0.65rem; color: var(--dim); margin-bottom: 4px;
+  }
+  .slider-value { color: var(--card-color, var(--accent)); }
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%; height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--card-color, var(--accent));
+    box-shadow: 0 0 8px var(--card-color, var(--accent));
+    cursor: pointer;
+  }
+
+  /* Blink patterns */
+  .blink-row {
+    display: flex; gap: 4px; flex-wrap: wrap;
+  }
+  .pattern-btn {
+    flex: 1; min-width: 40px;
+    padding: 5px 4px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.6rem;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--dim);
+    cursor: pointer;
+    transition: all 0.15s;
+    touch-action: manipulation;
+  }
+  .pattern-btn.active, .pattern-btn:hover {
+    border-color: var(--card-color, var(--accent));
+    color: var(--card-color, var(--accent));
+    background: rgba(0,229,255,0.05);
+  }
+
+  /* ── Global controls ── */
+  .global-controls {
+    display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;
+  }
+  .ctrl-btn {
+    flex: 1; min-width: 120px;
+    padding: 12px 16px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    border-radius: 6px;
+    cursor: pointer;
+    border: 1px solid;
+    transition: all 0.15s;
+    touch-action: manipulation;
+    text-transform: uppercase;
+  }
+  .ctrl-btn.all-on {
+    background: rgba(0,229,255,0.08);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .ctrl-btn.all-on:active { background: rgba(0,229,255,0.2); box-shadow: var(--glow); }
+  .ctrl-btn.all-off {
+    background: rgba(255,61,113,0.08);
+    border-color: var(--accent2);
+    color: var(--accent2);
+  }
+  .ctrl-btn.all-off:active { background: rgba(255,61,113,0.2); box-shadow: var(--glow2); }
+  .ctrl-btn.send-bus {
+    background: rgba(0,255,136,0.08);
+    border-color: #00ff88;
+    color: #00ff88;
+  }
+  .ctrl-btn.send-bus:active { background: rgba(0,255,136,0.2); }
+
+  /* ── Numpad ── */
+  .numpad {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .num-btn {
+    padding: 14px 8px;
+    background: #0f1218;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.1s;
+    touch-action: manipulation;
+  }
+  .num-btn:active { background: rgba(0,229,255,0.1); border-color: var(--accent); color: var(--accent); }
+  .num-btn.clr { color: var(--accent2); border-color: var(--accent2); }
+  .num-btn.send { color: #00ff88; border-color: #00ff88; grid-column: span 2; }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: #0f1218; border: 1px solid var(--accent);
+    color: var(--accent); font-size: 0.75rem;
+    padding: 10px 20px; border-radius: 6px;
+    box-shadow: var(--glow);
+    opacity: 0; transition: opacity 0.3s;
+    z-index: 200; pointer-events: none;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">BUS<span>·</span>CTRL</div>
+  <div class="status-badge">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">CONECTANDO...</span>
+  </div>
+</header>
+
+<main>
+
+  <!-- ── Bus visualizer ── -->
+  <div class="section-title">ESTADO DEL BUS</div>
+  <div class="bus-display">
+    <div class="bus-bits" id="busBits"></div>
+    <div class="bus-info">
+      <div class="bus-info-item">
+        <span class="bus-value" style="font-size:0.65rem;color:var(--dim)">DECIMAL</span>
+        <span class="bus-info-value" id="busDec">0</span>
+      </div>
+      <div class="bus-info-item">
+        <span class="bus-value" style="font-size:0.65rem;color:var(--dim)">HEX</span>
+        <span class="bus-info-value" id="busHex">0x00</span>
+      </div>
+      <div class="bus-info-item">
+        <span class="bus-value" style="font-size:0.65rem;color:var(--dim)">BINARIO</span>
+        <span class="bus-info-value" id="busBin">00000000</span>
+      </div>
+      <div class="bus-info-item">
+        <span class="bus-value" style="font-size:0.65rem;color:var(--dim)">ACTIVOS</span>
+        <span class="bus-info-value" id="busActive">0 / 8</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Bus writer ── -->
+  <div class="section-title">ESCRIBIR AL BUS</div>
+  <div class="bus-writer">
+    <div class="hex-input-row">
+      <input type="text" class="hex-input" id="hexInput" placeholder="0x00" maxlength="4">
+      <button class="ctrl-btn send-bus" onclick="sendBusByte()">ENVIAR</button>
+    </div>
+    <div class="preset-row">
+      <button class="preset-btn" onclick="setHex('0x00')">0x00</button>
+      <button class="preset-btn" onclick="setHex('0xFF')">0xFF</button>
+      <button class="preset-btn" onclick="setHex('0xAA')">0xAA</button>
+      <button class="preset-btn" onclick="setHex('0x55')">0x55</button>
+      <button class="preset-btn" onclick="setHex('0x0F')">0x0F</button>
+      <button class="preset-btn" onclick="setHex('0xF0')">0xF0</button>
+    </div>
+    <div class="numpad">
+      <button class="num-btn" onclick="hexAppend('0')">0</button>
+      <button class="num-btn" onclick="hexAppend('1')">1</button>
+      <button class="num-btn" onclick="hexAppend('2')">2</button>
+      <button class="num-btn" onclick="hexAppend('3')">3</button>
+      <button class="num-btn" onclick="hexAppend('4')">4</button>
+      <button class="num-btn" onclick="hexAppend('5')">5</button>
+      <button class="num-btn" onclick="hexAppend('6')">6</button>
+      <button class="num-btn" onclick="hexAppend('7')">7</button>
+      <button class="num-btn" onclick="hexAppend('8')">8</button>
+      <button class="num-btn" onclick="hexAppend('9')">9</button>
+      <button class="num-btn" onclick="hexAppend('A')">A</button>
+      <button class="num-btn" onclick="hexAppend('B')">B</button>
+      <button class="num-btn" onclick="hexAppend('C')">C</button>
+      <button class="num-btn" onclick="hexAppend('D')">D</button>
+      <button class="num-btn" onclick="hexAppend('E')">E</button>
+      <button class="num-btn" onclick="hexAppend('F')">F</button>
+      <button class="num-btn clr" onclick="hexClear()">CLR</button>
+      <button class="num-btn clr" onclick="hexBackspace()">⌫</button>
+      <button class="num-btn send" onclick="sendBusByte()">⚡ ENVIAR AL BUS</button>
+    </div>
+  </div>
+
+  <!-- ── Global controls ── -->
+  <div class="section-title">CONTROL GLOBAL</div>
+  <div class="global-controls">
+    <button class="ctrl-btn all-on" onclick="allLeds(true)">▶ TODOS ON</button>
+    <button class="ctrl-btn all-off" onclick="allLeds(false)">■ TODOS OFF</button>
+  </div>
+
+  <!-- ── LED Cards ── -->
+  <div class="section-title">CANALES INDIVIDUALES</div>
+  <div class="led-grid" id="ledGrid"></div>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SERVER = `http://${location.hostname}:5000`;
+let ledState = {};
+
+// ── Utilidades ──────────────────────────────────────────────────────────────
+function showToast(msg, color = 'var(--accent)') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.borderColor = color;
+  t.style.color = color;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return `${r},${g},${b}`;
+}
+
+// ── API calls ────────────────────────────────────────────────────────────────
+async function apiFetch(url, body) {
+  const res = await fetch(SERVER + url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  return res.json();
+}
+
+async function fetchStatus() {
+  try {
+    const data = await fetch(SERVER + '/api/status').then(r=>r.json());
+    const dot = document.getElementById('statusDot');
+    const txt = document.getElementById('statusText');
+    dot.className = 'status-dot ' + (data.simulation ? 'sim' : 'connected');
+    txt.textContent = data.simulation ? 'SIMULACIÓN' : 'CONECTADO';
+    ledState = data.leds;
+    updateBusDisplay();
+    if (!document.getElementById('ledGrid').children.length) buildGrid(data.leds);
+    else updateCards();
+  } catch(e) {
+    document.getElementById('statusDot').className = 'status-dot';
+    document.getElementById('statusText').textContent = 'SIN CONEXIÓN';
+  }
+}
+
+// ── Bus display ──────────────────────────────────────────────────────────────
+function buildBusBits() {
+  const container = document.getElementById('busBits');
+  container.innerHTML = '';
+  for (let i = 0; i < 8; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'bit-cell';
+    cell.id = `bit-${i}`;
+    cell.innerHTML = `<span class="bit-label">B${7-i}</span><span class="bit-value">0</span>`;
+    container.appendChild(cell);
+  }
+}
+
+function updateBusDisplay() {
+  const leds = Object.values(ledState).slice(0, 8);
+  let byte = 0;
+  leds.forEach((led, i) => { if (led.on) byte |= (1 << (7 - i)); });
+
+  for (let i = 0; i < 8; i++) {
+    const cell = document.getElementById(`bit-${i}`);
+    if (!cell) continue;
+    const active = (byte >> (7-i)) & 1;
+    cell.classList.toggle('active', !!active);
+    cell.querySelector('.bit-value').textContent = active ? '1' : '0';
+  }
+  document.getElementById('busDec').textContent = byte;
+  document.getElementById('busHex').textContent = `0x${byte.toString(16).toUpperCase().padStart(2,'0')}`;
+  document.getElementById('busBin').textContent = byte.toString(2).padStart(8,'0');
+  const active = leds.filter(l=>l.on).length;
+  document.getElementById('busActive').textContent = `${active} / ${leds.length}`;
+}
+
+// ── LED Cards ────────────────────────────────────────────────────────────────
+function buildGrid(leds) {
+  const grid = document.getElementById('ledGrid');
+  grid.innerHTML = '';
+  Object.entries(leds).forEach(([id, led]) => {
+    const rgb = hexToRgb(led.color);
+    const card = document.createElement('div');
+    card.className = `led-card${led.on ? ' on' : ''}`;
+    card.id = `card-${id}`;
+    card.style.setProperty('--card-color', led.color);
+    card.style.setProperty('--card-rgb', rgb);
+    card.style.setProperty('--card-rgb2', rgb);
+    card.innerHTML = `
+      <div class="led-card-header">
+        <div class="led-indicator"></div>
+        <div class="led-name">${led.name}</div>
+        <div class="led-pin">GPIO${led.pin}</div>
+      </div>
+      <div class="toggle-row">
+        <span class="toggle-label">ENCENDER</span>
+        <label class="toggle">
+          <input type="checkbox" ${led.on?'checked':''} onchange="toggleLed('${id}', this.checked)">
+          <div class="toggle-track"><div class="toggle-thumb"></div></div>
+        </label>
+      </div>
+      ${led.pwm ? `
+      <div class="slider-row">
+        <div class="slider-label">
+          <span>BRILLO</span>
+          <span class="slider-value" id="bv-${id}">${led.brightness}%</span>
+        </div>
+        <input type="range" min="0" max="100" value="${led.brightness}"
+          oninput="setBrightness('${id}', this.value)">
+      </div>` : ''}
+      <div class="blink-row">
+        ${['slow','fast','pulse','sos'].map(p=>`
+          <button class="pattern-btn${led.blink && led.blink_pattern===p?' active':''}"
+            id="pat-${id}-${p}"
+            onclick="setBlink('${id}', '${p}')">
+            ${p.toUpperCase()}
+          </button>`).join('')}
+        <button class="pattern-btn${!led.blink?' active':''}" id="pat-${id}-off"
+          onclick="stopBlink('${id}')">OFF</button>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function updateCards() {
+  Object.entries(ledState).forEach(([id, led]) => {
+    const card = document.getElementById(`card-${id}`);
+    if (!card) return;
+    card.classList.toggle('on', led.on);
+    card.classList.toggle('blink', led.blink);
+    const chk = card.querySelector('input[type=checkbox]');
+    if (chk) chk.checked = led.on;
+    const bv = document.getElementById(`bv-${id}`);
+    if (bv) bv.textContent = `${led.brightness}%`;
+    ['slow','fast','pulse','sos'].forEach(p => {
+      const btn = document.getElementById(`pat-${id}-${p}`);
+      if (btn) btn.classList.toggle('active', led.blink && led.blink_pattern===p);
+    });
+    const offBtn = document.getElementById(`pat-${id}-off`);
+    if (offBtn) offBtn.classList.toggle('active', !led.blink);
+  });
+}
+
+// ── Controls ─────────────────────────────────────────────────────────────────
+async function toggleLed(id, on) {
+  ledState[id].on = on;
+  updateBusDisplay(); updateCards();
+  await apiFetch(`/api/led/${id}`, { on });
+  showToast(`${ledState[id].name}: ${on?'ON':'OFF'}`, ledState[id].color);
+}
+
+async function setBrightness(id, val) {
+  ledState[id].brightness = parseInt(val);
+  document.getElementById(`bv-${id}`).textContent = `${val}%`;
+  await apiFetch(`/api/led/${id}`, { brightness: parseInt(val) });
+}
+
+async function setBlink(id, pattern) {
+  ledState[id].blink = true;
+  ledState[id].blink_pattern = pattern;
+  if (!ledState[id].on) { ledState[id].on = true; }
+  updateCards(); updateBusDisplay();
+  await apiFetch(`/api/led/${id}`, { on: true, blink: true, blink_pattern: pattern });
+  showToast(`${ledState[id].name}: parpadeo ${pattern.toUpperCase()}`, ledState[id].color);
+}
+
+async function stopBlink(id) {
+  ledState[id].blink = false;
+  updateCards();
+  await apiFetch(`/api/led/${id}`, { blink: false });
+}
+
+async function allLeds(on) {
+  Object.keys(ledState).forEach(id => { ledState[id].on = on; ledState[id].blink = false; });
+  updateBusDisplay(); updateCards();
+  await apiFetch('/api/all', { on });
+  showToast(on ? 'TODOS LOS CANALES ON' : 'TODOS LOS CANALES OFF',
+    on ? 'var(--accent)' : 'var(--accent2)');
+}
+
+// ── Hex input / numpad ────────────────────────────────────────────────────────
+function setHex(val) { document.getElementById('hexInput').value = val; }
+
+function hexAppend(c) {
+  const inp = document.getElementById('hexInput');
+  let val = inp.value.replace(/^0x/i,'').replace(/[^0-9a-fA-F]/g,'');
+  if (val.length >= 2) val = val.slice(-1);
+  inp.value = '0x' + (val + c).toUpperCase().slice(-2);
+}
+
+function hexClear() { document.getElementById('hexInput').value = ''; }
+function hexBackspace() {
+  const inp = document.getElementById('hexInput');
+  let val = inp.value.replace(/^0x/i,'').replace(/[^0-9a-fA-F]/g,'');
+  inp.value = val.length > 1 ? '0x' + val.slice(0,-1).toUpperCase() : '';
+}
+
+async function sendBusByte() {
+  const raw = document.getElementById('hexInput').value.trim();
+  const num = parseInt(raw, 16);
+  if (isNaN(num) || num < 0 || num > 255) {
+    showToast('Valor inválido (0x00 - 0xFF)', 'var(--accent2)'); return;
+  }
+  const res = await apiFetch('/api/bus/write', { byte: num, msb_first: true });
+  Object.keys(ledState).forEach((id,i) => {
+    if (i < 8) ledState[id].on = !!((num >> (7-i)) & 1);
+  });
+  updateBusDisplay(); updateCards();
+  showToast(`BUS ← ${res.hex} | ${res.binary}`, '#00ff88');
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+buildBusBits();
+fetchStatus();
+setInterval(fetchStatus, 3000);
+</script>
+</body>
+</html>
