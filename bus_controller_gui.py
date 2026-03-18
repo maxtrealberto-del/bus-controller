@@ -180,7 +180,7 @@ class BusControlApp:
     def _on_drag_motion(self, event):
         dy = self._drag_start_y - event.y_root
         self._drag_start_y = event.y_root
-        self.canvas.yview_scroll(int(dy / 1), "units")
+        self.canvas.yview_scroll(int(dy / 4), "units")
 
     def _make_led_card(self, parent, i, cfg):
         frame = tk.Frame(parent, bg="#0f1218",
