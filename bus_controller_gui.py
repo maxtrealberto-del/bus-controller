@@ -138,7 +138,7 @@ class BusControlApp:
 
         # Canvas + scrollbar
         self.canvas = tk.Canvas(left, bg="#0a0c10", highlightthickness=0)
-        scrollbar = tk.Scrollbar(left, orient="vertical", command=self.canvas.yview)
+        scrollbar = tk.Scrollbar(left, orient="vertical", command=self.canvas.yview, width=8)
         self.canvas.configure(yscrollcommand=scrollbar.set)
 
         scrollbar.pack(side="right", fill="y")
