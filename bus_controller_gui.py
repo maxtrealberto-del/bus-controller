@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-Bus Digital Controller - Interfaz Tkinter con scroll
+Bus Digital Controller - Interfaz Tkinter compacta
 Raspberry Pi 3 B+ con pantalla táctil ARD-510 (800x480 resistiva)
+Todo visible sin scroll
 """
 
 import tkinter as tk
@@ -61,7 +62,7 @@ def set_led(i, on, brightness=100):
     else:
         GPIO.output(pin, GPIO.HIGH if on else GPIO.LOW)
 
-PATTERNS = {"SLOW": (1.0, 1.0), "FAST": (0.15, 0.15), "PULSE": (0.05, 0.95), "SOS": (0.1, 0.1)}
+PATTERNS = {"SLOW": (1.0,1.0), "FAST": (0.15,0.15), "PULSE": (0.05,0.95), "SOS": (0.1,0.1)}
 
 def blink_worker(i):
     while led_state[i]["blink"] and led_state[i]["on"]:
@@ -91,219 +92,160 @@ class BusControlApp:
         self.root.geometry("800x480")
         self.root.resizable(False, False)
 
-        # Fuentes ajustadas para 800x480
-        self.font_title = tk.font.Font(family="Courier", size=11, weight="bold")
-        self.font_btn   = tk.font.Font(family="Courier", size=10, weight="bold")
-        self.font_small = tk.font.Font(family="Courier", size=8)
-        self.font_hex   = tk.font.Font(family="Courier", size=22, weight="bold")
+        self.fn_title = tk.font.Font(family="Courier", size=10, weight="bold")
+        self.fn_btn   = tk.font.Font(family="Courier", size=9,  weight="bold")
+        self.fn_small = tk.font.Font(family="Courier", size=7)
+        self.fn_hex   = tk.font.Font(family="Courier", size=20, weight="bold")
 
         self.hex_value  = tk.StringVar(value="0x00")
         self.bus_binary = tk.StringVar(value="00000000")
         self.bus_dec    = tk.StringVar(value="DEC: 0")
-
         self.led_frames = []
+
         self._build_ui()
         self._update_bus_display()
 
-        # Drag scroll
-        self._drag_start_y = 0
-
     def _build_ui(self):
-        # ── Header fijo ──
-        header = tk.Frame(self.root, bg="#0f1218", pady=4)
-        header.pack(fill="x", side="top")
+        # ── Header ──
+        header = tk.Frame(self.root, bg="#0f1218", pady=3)
+        header.pack(fill="x")
         tk.Label(header, text="⬡ BUS DIGITAL CONTROLLER",
-                 font=self.font_title, fg="#00e5ff", bg="#0f1218").pack(side="left", padx=12)
+                 font=self.fn_title, fg="#00e5ff", bg="#0f1218").pack(side="left", padx=10)
         modo = "SIMULACIÓN" if SIMULATION else "HARDWARE REAL"
         color_modo = "#ffaa00" if SIMULATION else "#00ff88"
         tk.Label(header, text=f"● {modo}",
-                 font=self.font_small, fg=color_modo, bg="#0f1218").pack(side="right", padx=8)
-        tk.Button(header, text="✕", font=self.font_btn,
-                  bg="#ff3d71", fg="white", relief="flat", padx=8,
+                 font=self.fn_small, fg=color_modo, bg="#0f1218").pack(side="right", padx=6)
+        tk.Button(header, text="✕ SALIR", font=self.fn_small,
+                  bg="#ff3d71", fg="white", relief="flat", padx=6,
                   command=self._salir).pack(side="right", padx=4)
 
-        # ── Layout principal (izquierda scroll + derecha fija) ──
+        # ── Body ──
         body = tk.Frame(self.root, bg="#0a0c10")
-        body.pack(fill="both", expand=True)
+        body.pack(fill="both", expand=True, padx=4, pady=3)
 
-        # ── Panel derecho fijo — Bus Writer ──
-        right = tk.Frame(body, bg="#0a0c10", width=210)
-        right.pack(side="right", fill="y", padx=(4,6), pady=4)
-        right.pack_propagate(False)
-        self._build_bus_panel(right)
-
-        # ── Panel izquierdo con scroll — LEDs ──
+        # ── Izquierda: grid de 8 LEDs en 2 columnas x 4 filas ──
         left = tk.Frame(body, bg="#0a0c10")
         left.pack(side="left", fill="both", expand=True)
 
-        # Canvas + scrollbar
-        self.canvas = tk.Canvas(left, bg="#0a0c10", highlightthickness=0)
-        scrollbar = tk.Scrollbar(left, orient="vertical", command=self.canvas.yview, width=0)
-        self.canvas.configure(yscrollcommand=scrollbar.set)
-
-        scrollbar.pack(side="right", fill="y")
-        self.canvas.pack(side="left", fill="both", expand=True)
-
-        self.scroll_frame = tk.Frame(self.canvas, bg="#0a0c10")
-        self.canvas_window = self.canvas.create_window((0, 0), window=self.scroll_frame, anchor="nw")
-
-        self.scroll_frame.bind("<Configure>", self._on_frame_configure)
-        self.canvas.bind("<Configure>", self._on_canvas_configure)
-
-        # Eventos táctiles para scroll con pluma
-        self.canvas.bind("<ButtonPress-1>", self._on_drag_start)
-        self.canvas.bind("<B1-Motion>", self._on_drag_motion)
-        self.scroll_frame.bind("<ButtonPress-1>", self._on_drag_start)
-        self.scroll_frame.bind("<B1-Motion>", self._on_drag_motion)
-
-        # Construir tarjetas de LEDs
-        tk.Label(self.scroll_frame, text="CANALES DEL BUS",
-                 font=self.font_small, fg="#4a5568", bg="#0a0c10").grid(
-                 row=0, column=0, columnspan=2, sticky="w", padx=4, pady=(4,2))
-
         for i, cfg in enumerate(LED_CONFIG):
-            row = (i // 2) + 1
-            col = i % 2
-            card = self._make_led_card(self.scroll_frame, i, cfg)
-            card.grid(row=row, column=col, padx=4, pady=3, sticky="nsew")
-            self.scroll_frame.columnconfigure(col, weight=1)
+            row = i % 4
+            col = i // 4
+            card = self._make_led_card(left, i, cfg)
+            card.grid(row=row, column=col, padx=3, pady=2, sticky="nsew")
+            left.columnconfigure(col, weight=1)
+            left.rowconfigure(row, weight=1)
 
-    def _on_frame_configure(self, event):
-        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-
-    def _on_canvas_configure(self, event):
-        self.canvas.itemconfig(self.canvas_window, width=event.width)
-
-    def _on_drag_start(self, event):
-        self._drag_start_y = event.y_root
-
-    def _on_drag_motion(self, event):
-        dy = self._drag_start_y - event.y_root
-        self._drag_start_y = event.y_root
-        self.canvas.yview_scroll(int(dy / 4), "units")
+        # ── Derecha: Bus writer ──
+        right = tk.Frame(body, bg="#0a0c10", width=200)
+        right.pack(side="right", fill="y", padx=(6,2))
+        right.pack_propagate(False)
+        self._build_bus_panel(right)
 
     def _make_led_card(self, parent, i, cfg):
         frame = tk.Frame(parent, bg="#0f1218",
                          highlightbackground="#1e2530", highlightthickness=1)
 
+        # Fila superior: indicador + nombre + pin
         top = tk.Frame(frame, bg="#0f1218")
-        top.pack(fill="x", padx=6, pady=(6,2))
+        top.pack(fill="x", padx=5, pady=(4,1))
 
-        indicator = tk.Label(top, text="●", font=tk.font.Font(size=13),
+        indicator = tk.Label(top, text="●", font=tk.font.Font(size=11),
                              fg=cfg["color_dim"], bg="#0f1218")
         indicator.pack(side="left")
         tk.Label(top, text=cfg["nombre"],
-                 font=self.font_btn, fg="#c8d6e5", bg="#0f1218").pack(side="left", padx=4)
+                 font=self.fn_btn, fg="#c8d6e5", bg="#0f1218").pack(side="left", padx=3)
         tk.Label(top, text=f"GPIO{cfg['pin']}",
-                 font=self.font_small, fg="#4a5568", bg="#0f1218").pack(side="right")
+                 font=self.fn_small, fg="#4a5568", bg="#0f1218").pack(side="right")
 
-        btn = tk.Button(frame, text="OFF", font=self.font_btn,
-                        bg="#1a1e26", fg="#4a5568",
-                        relief="flat", pady=8,
+        # Botón ON/OFF
+        btn = tk.Button(frame, text="OFF ○", font=self.fn_btn,
+                        bg="#1a1e26", fg="#4a5568", relief="flat", pady=5,
                         command=lambda idx=i: self._toggle_led(idx))
-        btn.pack(fill="x", padx=6, pady=3)
+        btn.pack(fill="x", padx=5, pady=2)
 
-        brightness_var = tk.IntVar(value=100)
-        if cfg["pin"] in PWM_PINS:
-            br_row = tk.Frame(frame, bg="#0f1218")
-            br_row.pack(fill="x", padx=6)
-            tk.Label(br_row, text="BRILLO", font=self.font_small,
-                     fg="#4a5568", bg="#0f1218").pack(side="left")
-            slider = tk.Scale(br_row, from_=0, to=100, orient="horizontal",
-                             variable=brightness_var,
-                             bg="#0f1218", fg=cfg["color"],
-                             troughcolor="#1a1e26", highlightthickness=0,
-                             showvalue=False, sliderlength=24, length=120,
-                             command=lambda v, idx=i, bv=brightness_var: self._set_brightness(idx, bv))
-            slider.pack(side="left", fill="x", expand=True)
-
-        blink_frame = tk.Frame(frame, bg="#0f1218")
-        blink_frame.pack(fill="x", padx=6, pady=(2,6))
-        for pattern in ["SLOW", "FAST", "PULSE", "SOS"]:
-            tk.Button(blink_frame, text=pattern, font=self.font_small,
-                     bg="#1a1e26", fg="#4a5568", relief="flat", padx=2,
-                     command=lambda idx=i, p=pattern: self._set_blink(idx, p)
+        # Botones parpadeo en una sola fila
+        brow = tk.Frame(frame, bg="#0f1218")
+        brow.pack(fill="x", padx=5, pady=(0,4))
+        for p in ["SLW","FST","PLS","SOS"]:
+            tk.Button(brow, text=p, font=self.fn_small,
+                     bg="#1a1e26", fg="#4a5568", relief="flat",
+                     command=lambda idx=i, pat=p: self._set_blink(idx,
+                         {"SLW":"SLOW","FST":"FAST","PLS":"PULSE","SOS":"SOS"}[pat])
                      ).pack(side="left", expand=True, fill="x", padx=1)
-        tk.Button(blink_frame, text="OFF", font=self.font_small,
-                 bg="#1a1e26", fg="#ff3d71", relief="flat", padx=2,
+        tk.Button(brow, text="✕", font=self.fn_small,
+                 bg="#1a1e26", fg="#ff3d71", relief="flat",
                  command=lambda idx=i: self._stop_blink(idx)
                  ).pack(side="left", expand=True, fill="x", padx=1)
 
         self.led_frames.append({
-            "frame": frame, "indicator": indicator, "btn": btn,
-            "brightness_var": brightness_var,
+            "indicator": indicator, "btn": btn,
             "color": cfg["color"], "color_dim": cfg["color_dim"],
         })
         return frame
 
     def _build_bus_panel(self, parent):
-        tk.Label(parent, text="ESCRIBIR AL BUS",
-                 font=self.font_small, fg="#4a5568", bg="#0a0c10").pack(anchor="w", pady=(0,2))
+        # Display valor del bus
+        tk.Label(parent, text="BUS WRITER",
+                 font=self.fn_small, fg="#4a5568", bg="#0a0c10").pack(anchor="w")
 
-        display = tk.Frame(parent, bg="#0f1218",
-                           highlightbackground="#1e2530", highlightthickness=1)
-        display.pack(fill="x", pady=(0,4))
-        tk.Label(display, textvariable=self.hex_value,
-                 font=self.font_hex, fg="#00e5ff", bg="#0f1218").pack(pady=4)
-        tk.Label(display, textvariable=self.bus_binary,
-                 font=self.font_small, fg="#4a5568", bg="#0f1218").pack()
-        tk.Label(display, textvariable=self.bus_dec,
-                 font=self.font_small, fg="#4a5568", bg="#0f1218").pack(pady=(0,4))
+        disp = tk.Frame(parent, bg="#0f1218",
+                        highlightbackground="#1e2530", highlightthickness=1)
+        disp.pack(fill="x", pady=(2,4))
+        tk.Label(disp, textvariable=self.hex_value,
+                 font=self.fn_hex, fg="#00e5ff", bg="#0f1218").pack(pady=3)
+        tk.Label(disp, textvariable=self.bus_binary,
+                 font=self.fn_small, fg="#4a5568", bg="#0f1218").pack()
+        tk.Label(disp, textvariable=self.bus_dec,
+                 font=self.fn_small, fg="#4a5568", bg="#0f1218").pack(pady=(0,3))
 
+        # Teclado hex 4x4
         pad = tk.Frame(parent, bg="#0a0c10")
         pad.pack(fill="x")
-        keys = [
-            ['0','1','2','3'],
-            ['4','5','6','7'],
-            ['8','9','A','B'],
-            ['C','D','E','F'],
-        ]
-        for row_keys in keys:
+        for row_keys in [['0','1','2','3'],['4','5','6','7'],
+                          ['8','9','A','B'],['C','D','E','F']]:
             row = tk.Frame(pad, bg="#0a0c10")
             row.pack(fill="x", pady=1)
             for k in row_keys:
-                tk.Button(row, text=k, font=self.font_btn,
-                         bg="#1a1e26", fg="#c8d6e5", relief="flat",
-                         pady=8, command=lambda c=k: self._hex_append(c)
+                tk.Button(row, text=k, font=self.fn_btn,
+                         bg="#1a1e26", fg="#c8d6e5", relief="flat", pady=6,
+                         command=lambda c=k: self._hex_append(c)
                          ).pack(side="left", expand=True, fill="x", padx=1)
 
-        ctrl_row = tk.Frame(pad, bg="#0a0c10")
-        ctrl_row.pack(fill="x", pady=1)
-        tk.Button(ctrl_row, text="CLR", font=self.font_btn,
-                 bg="#1a1e26", fg="#ff3d71", relief="flat", pady=8,
+        # CLR y backspace
+        crow = tk.Frame(pad, bg="#0a0c10")
+        crow.pack(fill="x", pady=1)
+        tk.Button(crow, text="CLR", font=self.fn_btn,
+                 bg="#1a1e26", fg="#ff3d71", relief="flat", pady=6,
                  command=self._hex_clear).pack(side="left", expand=True, fill="x", padx=1)
-        tk.Button(ctrl_row, text="⌫", font=self.font_btn,
-                 bg="#1a1e26", fg="#ff3d71", relief="flat", pady=8,
+        tk.Button(crow, text="⌫", font=self.fn_btn,
+                 bg="#1a1e26", fg="#ff3d71", relief="flat", pady=6,
                  command=self._hex_backspace).pack(side="left", expand=True, fill="x", padx=1)
 
-        tk.Button(pad, text="⚡ ENVIAR AL BUS", font=self.font_btn,
-                 bg="#00ff88", fg="#0a0c10", relief="flat", pady=10,
-                 command=self._send_bus).pack(fill="x", pady=4)
+        # Enviar
+        tk.Button(pad, text="⚡ ENVIAR", font=self.fn_btn,
+                 bg="#00ff88", fg="#0a0c10", relief="flat", pady=8,
+                 command=self._send_bus).pack(fill="x", pady=3)
 
+        # Presets
         tk.Label(parent, text="PRESETS",
-                 font=self.font_small, fg="#4a5568", bg="#0a0c10").pack(anchor="w", pady=(4,1))
-        prow1 = tk.Frame(parent, bg="#0a0c10")
-        prow1.pack(fill="x")
-        prow2 = tk.Frame(parent, bg="#0a0c10")
-        prow2.pack(fill="x", pady=(1,0))
-        for val in ["0x00", "0xFF", "0xAA"]:
-            tk.Button(prow1, text=val, font=self.font_small,
-                     bg="#1a1e26", fg="#4a5568", relief="flat", pady=4,
-                     command=lambda v=val: self._set_hex(v)
-                     ).pack(side="left", expand=True, fill="x", padx=1)
-        for val in ["0x55", "0x0F", "0xF0"]:
-            tk.Button(prow2, text=val, font=self.font_small,
-                     bg="#1a1e26", fg="#4a5568", relief="flat", pady=4,
-                     command=lambda v=val: self._set_hex(v)
-                     ).pack(side="left", expand=True, fill="x", padx=1)
+                 font=self.fn_small, fg="#4a5568", bg="#0a0c10").pack(anchor="w")
+        for vals in [["0x00","0xFF","0xAA"],["0x55","0x0F","0xF0"]]:
+            row = tk.Frame(parent, bg="#0a0c10")
+            row.pack(fill="x", pady=1)
+            for v in vals:
+                tk.Button(row, text=v, font=self.fn_small,
+                         bg="#1a1e26", fg="#4a5568", relief="flat", pady=4,
+                         command=lambda val=v: self._set_hex(val)
+                         ).pack(side="left", expand=True, fill="x", padx=1)
 
+        # Global
         tk.Label(parent, text="GLOBAL",
-                 font=self.font_small, fg="#4a5568", bg="#0a0c10").pack(anchor="w", pady=(6,1))
-        tk.Button(parent, text="▶ TODOS ON", font=self.font_btn,
-                 bg="#00e5ff", fg="#0a0c10", relief="flat", pady=8,
+                 font=self.fn_small, fg="#4a5568", bg="#0a0c10").pack(anchor="w", pady=(4,1))
+        tk.Button(parent, text="▶ TODOS ON", font=self.fn_btn,
+                 bg="#00e5ff", fg="#0a0c10", relief="flat", pady=6,
                  command=lambda: self._all_leds(True)).pack(fill="x", pady=1)
-        tk.Button(parent, text="■ TODOS OFF", font=self.font_btn,
-                 bg="#ff3d71", fg="white", relief="flat", pady=8,
+        tk.Button(parent, text="■ TODOS OFF", font=self.fn_btn,
+                 bg="#ff3d71", fg="white", relief="flat", pady=6,
                  command=lambda: self._all_leds(False)).pack(fill="x", pady=1)
 
     # ── Acciones ──────────────────────────────────────────────────────────────
@@ -320,9 +262,9 @@ class BusControlApp:
             set_led(i, True, led_state[i]["brightness"])
 
     def _set_blink(self, i, pattern):
+        led_state[i]["on"] = True
         led_state[i]["blink"] = True
         led_state[i]["pattern"] = pattern
-        led_state[i]["on"] = True
         start_blink(i)
         self._update_card(i)
 
@@ -359,7 +301,7 @@ class BusControlApp:
         self.bus_dec.set(f"DEC: {byte}")
 
     def _hex_append(self, c):
-        current = self.hex_value.get().replace("0x", "").replace("0X", "")
+        current = self.hex_value.get().replace("0x","").replace("0X","")
         current = current[-1:] + c if len(current) >= 2 else current + c
         self.hex_value.set(f"0x{current.upper()[-2:]}")
 
@@ -367,9 +309,8 @@ class BusControlApp:
         self.hex_value.set("0x00")
 
     def _hex_backspace(self):
-        current = self.hex_value.get().replace("0x", "")
-        new = current[:-1] if len(current) > 1 else "0"
-        self.hex_value.set(f"0x{new.upper()}")
+        current = self.hex_value.get().replace("0x","")
+        self.hex_value.set(f"0x{(current[:-1] or '0').upper()}")
 
     def _set_hex(self, val):
         self.hex_value.set(val)
@@ -380,8 +321,7 @@ class BusControlApp:
         except:
             return
         for i in range(8):
-            bit = (value >> (7 - i)) & 1
-            led_state[i]["on"] = bool(bit)
+            led_state[i]["on"] = bool((value >> (7 - i)) & 1)
             led_state[i]["blink"] = False
             set_led(i, led_state[i]["on"])
             self._update_card(i)
@@ -394,7 +334,6 @@ class BusControlApp:
             GPIO.cleanup()
         self.root.destroy()
 
-# ─── Main ──────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     init_gpio()
     root = tk.Tk()
