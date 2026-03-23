@@ -203,10 +203,11 @@ class KeyboardController:
         status.pack(fill="x", side="bottom")
         tk.Label(status, textvariable=self.status_var,
                  font=self.fn_small, fg="#00e5ff", bg="#0f1218").pack(side="left", padx=12)
-
+            
     def _bind_keys(self):
         self.root.bind("<Key>", self._on_key)
-        self.root.focus_set()
+        self.root.focus_force()
+        self.root.after(100, self.root.focus_force)
 
     def _on_key(self, event):
         key = event.keysym.upper()
