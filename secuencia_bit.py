@@ -126,10 +126,7 @@ class SequenceController:
             top.pack(fill="x", padx=10, pady=(6,2))
             tk.Label(top, text=grupo["nombre"],
                     font=self.fn_btn, fg=grupo["color"], bg="#0f1218").pack(side="left")
-            bits_texto = "  →  " + "  ·  ".join(
-                LED_CONFIG[b]["nombre"] for b in grupo["bits"])
-            tk.Label(top, text=bits_texto,
-                    font=self.fn_small, fg="#4a5568", bg="#0f1218").pack(side="left", padx=8)
+
 
             # Indicadores de bits
             ind_row = tk.Frame(card, bg="#0f1218")
