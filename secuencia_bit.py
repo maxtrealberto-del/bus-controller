@@ -180,24 +180,7 @@ class SequenceController:
         tk.Label(bus_frame, textvariable=self.bus_dec,
                  font=self.fn_small, fg="#4a5568", bg="#0f1218").pack(pady=(0,8))
 
-        # Display de todos los bits
-        tk.Label(right, text="BITS INDIVIDUALES",
-                 font=self.fn_small, fg="#4a5568", bg="#0a0c10").pack(anchor="w", pady=(8,4))
-
-        bits_frame = tk.Frame(right, bg="#0f1218",
-                             highlightbackground="#1e2530", highlightthickness=1)
-        bits_frame.pack(fill="x")
         self.all_bit_labels = []
-        for i in range(9):
-            cfg = LED_CONFIG[i]
-            row = tk.Frame(bits_frame, bg="#0f1218")
-            row.pack(fill="x", padx=8, pady=1)
-            tk.Label(row, text=cfg["nombre"],
-                    font=self.fn_small, fg="#4a5568", bg="#0f1218", width=6).pack(side="left")
-            lbl = tk.Label(row, text="○ OFF",
-                          font=self.fn_small, fg="#4a5568", bg="#0f1218")
-            lbl.pack(side="left", padx=4)
-            self.all_bit_labels.append(lbl)
 
         # Retardo actual
         tk.Label(right, text=f"RETARDO: {RETARDO}s por bit",
