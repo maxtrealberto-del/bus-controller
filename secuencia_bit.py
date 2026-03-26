@@ -129,8 +129,7 @@ class SequenceController:
 
 
             # Indicadores de bits
-            ind_row = tk.Frame(card, bg="#0f1218")
-            ind_row.pack(fill="x", padx=10, pady=2)
+            ind_row = top
             grupo_inds = []
             for b in grupo["bits"]:
                 cfg = LED_CONFIG[b]
